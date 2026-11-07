@@ -1,55 +1,28 @@
-# What's the Weather?
+# Weather App on Kubernetes (Cloud Computing Course Project)
 
-This is a sample app meant for use with Kubernetes and/or Istio. It displays the weather from a single city (Austin, TX) or multiple cities (Austin, New York, San Francisco, Seattle).
+This project runs a weather web application on a local Kubernetes cluster (Minikube) using Docker containers.
 
-## Building
+## Credits
+Based on the open-source project "What's the Weather?" by crcsmnky:
+https://github.com/crcsmnky/weatherinfo (Apache License 2.0)
 
-The images can be built using [Docker](http://docker.com) or using [Cloud Build](http://cloud.google.com/cloud-build). To build an invidual image, refer to the following example:
+## Changes made
+- Changed the base image of the services from `python:2.7-slim` to `python:3.9-slim`.
+- Removed Locust load-testing libraries from `requirements.txt` (not needed by the frontend/backends).
+- Built the Docker images locally instead of using Google Cloud Build, and loaded them into Minikube with `minikube image load`.
+- Set `imagePullPolicy: IfNotPresent` so Kubernetes uses the local images.
 
-`gcloud builds submit --tag gcr.io/[PROJECTID]/weather-frontend:1.0 frontend/`
+## Cloud concepts demonstrated
+- Containers (Docker)
+- Container orchestration (Kubernetes Deployments and Services)
+- Microservices (frontend and backend services)
+- Secrets management (OpenWeatherMap API key stored as a Kubernetes Secret, not in the code)
 
-Or to build all of the images, run `build-images.sh`.
+## How to run
+1. Start Docker Desktop and run: `minikube start --driver=docker`
+2. Build the three images and load them into Minikube.
+3. Create the secret: `kubectl create secret generic openweathermap --from-literal=apikey=YOUR_API_KEY`
+4. Deploy: `kubectl apply -f manifests/weather-deployment.yaml`
+5. Run: `kubectl port-forward deployment/weather-frontend 5000:5000` and open http://localhost:5000
 
-## Deploying
-
-There are deployment specifications for Kubernetes and Istio in `manifests`. Before proceeding, you will need an API key from [OpenWeatherMap](http://openweathermap.org/api).
-
-Once you have your API key, add a `Secret` to your Kubernetes cluster:
-- `kubectl create secret generic openweathermap --from-literal=apikey=[OPENWEATHERMAP-API-KEY]`
-
-### Kubernetes
-
-To deploy the app to Kubernetes (without Istio), use the following commands:
-- `kubectl apply -f manifests/weather-deployment.yaml`
-
-*Note*: the Services are not externally accessible (no Ingress resource is created) so to access `weather-frontend` you'll need to use port forwarding and open [http://localhost:5000](http://localhost:5000):
-- `kubectl port-forward deployment/weather-frontend 5000:5000`
-
-### Kubernetes and Istio
-
-Once you have created a Kubernetes cluster and installed Istio, you can deploy the sample app as follows.
-
-First, enable auto-injection of the Envoy `istio-proxy`:
-- `kubectl label ns default istio-injection=enabled`
-
-Then deploy the rules first and the app second:
-- `kubectl apply -f manifests/weather-rules.yaml`
-- `kubectl apply -f manifests/weather-deployment.yaml`
-
-Now grab the `istio-ingressgateway` Load Balancer IP address:
-- `INGRESSGATEWAY=$(kubectl get svc -n istio-system istio-ingressgateway -o jsonpath="{.status.loadBalancer.ingress..ip}")`
-- Open `http://$INGRESSGATEWAY` in a browser
-
-*Note:* If you do not want to enable auto-injection of `istio-proxy` for the `default` namespace, you can also use `istioctl` to include `istio-proxy` in your Pods:
-- `kubectl apply -f <(istioctl kube-inject -f manifests/weather-deployment.yaml)`
-
-## Generating Load
-
-This repo also contains a [Locust](http://locust.io) script to generate load against `weather-frontend`. 
-
-**IMPORTANT**
-- The `loadgenerator` deployment is set to hit `weather-frontend.default:5000` and not `$INGRESSGATEWAY` therefore the traffic is coming from within the cluster
-- The `loadgenerator` is configured as a single replica with `5` clients randomly generating requests every 1-5s. *Keep this in mind so you don't go over your OpenWeatherMap API Key quota*.
-
-To deploy `loadgenerator`, update `FRONTEND_HOST` in `manifests/loadgen.yaml` and then apply:
-- `kubectl apply -f manifests/loadgen.yaml`
+Author: {Cloud`s Project Team:George,Yasmeen, Mena,Rana,Yara]
