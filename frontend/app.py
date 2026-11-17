@@ -2,7 +2,7 @@ import os
 import requests
 import json
 
-from flask import Flask, render_template
+from flask import Flask, render_template, request
 
 app = Flask(__name__)
 app.secret_key = '3c0716f88780d6d642330dfa3c96dbca' # md5 -s incremental-istio
@@ -11,10 +11,9 @@ if os.environ.get('ENABLE_TRACING', None) is not None:
     from opencensus.ext.stackdriver import trace_exporter as stackdriver_exporter
     from opencensus.ext.flask.flask_middleware import FlaskMiddleware
     from opencensus.trace import config_integration
-    
+
     project = os.environ.get('PROJECT_ID')
     exporter = stackdriver_exporter.StackdriverExporter(project_id=project)
-    exporter = stackdriver_exporter.StackdriverExporter()
     middleware = FlaskMiddleware(app, exporter=exporter)
     config_integration.trace_integrations(["requests"])
 
@@ -25,12 +24,18 @@ BASE_URL = 'http://{hostport}'.format(
 
 @app.route('/', methods=['GET'])
 def index():
-    resp = requests.get(BASE_URL + '/api/weather')
+    city = request.args.get('city', '').strip()
+    params = {'city': city} if city else None
+    resp = requests.get(BASE_URL + '/api/weather', params=params, timeout=30)
 
     if resp.status_code != 200:
-        return render_template('index.html', cities=[], code=resp.status_code, msg=resp.text)
+        try:
+            msg = resp.json().get('error', resp.text)
+        except ValueError:
+            msg = resp.text
+        return render_template('index.html', cities=[], code=resp.status_code, msg=msg, city=city)
     else:
-        return render_template('index.html', cities=resp.json(), msg=None)
+        return render_template('index.html', cities=resp.json(), code=200, msg=None, city=city)
 
 
 if __name__ == "__main__":
