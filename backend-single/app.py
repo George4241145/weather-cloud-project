@@ -42,7 +42,7 @@ def current_weather():
         except NotFoundError:
             return jsonify({'error': 'City not found: {}'.format(city)}), 404
         w = obs.weather
-        temp = w.temperature('fahrenheit')
+        temp = w.temperature('celsius')
         if metric is None:
             location = '{}, {}'.format(obs.location.name, obs.location.country)
         else:
